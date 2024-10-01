@@ -3,17 +3,16 @@ import pandas as pd
 import numpy as np
 
 CITY_DATA = { 'chicago': 'chicago.csv',
-              'new york city': 'new_york_city.csv',
-              'washington': 'washington.csv' }
+    'new york city': 'new_york_city.csv',
+    'washington': 'washington.csv' }
 
 Months = {
-    'January', 'February', 'March', 'April',
-    'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'All'
+    'january', 'february', 'march', 'april',
+    'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december', 'all'
 }
 
-
 days_of_week = {
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'All'
+    'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'all'
 }
 
 # Function to filter DataFrame by month name input
@@ -31,16 +30,6 @@ def filter_by_day_name(df, day_name, columnDate):
     return filtered_df
 
 def load_data(city, month, day):
-    """
-    Loads data for the specified city and filters by month and day if applicable.
-
-    Args:
-        (str) city - name of the city to analyze
-        (str) month - name of the month to filter by, or "all" to apply no month filter
-        (str) day - name of the day of week to filter by, or "all" to apply no day filter
-    Returns:
-        df - Pandas DataFrame containing city data filtered by month and day
-    """
     file_data_city = pd.read_csv(CITY_DATA[city])
     df = pd.DataFrame(file_data_city)
     if month != 'All':
@@ -83,16 +72,16 @@ def get_filters():
     # get user input for month (all, january, february, ... , june)
     while True:
         month = input("Please enter month name:")
-        if validate_month(month) == True:
+        if validate_month(month.lower()) == True:
             break
 
     # get user input for day of week (all, monday, tuesday, ... sunday)
     while True:
         day = input("Please enter day name:")
-        if validate_day_of_week(day) == True:
+        if validate_day_of_week(day.lower()) == True:
             break
     
-    return city, month, day
+    return city.lower(), month, day
 
 def time_stats(df):
 
@@ -102,27 +91,27 @@ def time_stats(df):
     data_convert = pd.to_datetime(df['Start Time'])
 
     # most common month
-    month = data_convert.dt.month.value_counts().idxmax()
+    month = data_convert.dt.month.mode()
 
     # most common day of week
-    dayOfweek = data_convert.dt.day_name().value_counts().idxmax()
+    day_of_week = data_convert.dt.day_name().mode()[0]
 
     # most common hour of day
-    hourOfday = data_convert.dt.hour.value_counts().idxmax()
+    hour_of_day = data_convert.dt.hour.mode()[0]
     
-    print(f"Most month = {month}:==> most day of week = {dayOfweek}:==> most hour of day = {hourOfday}")
+    print(f"Most month = {month}:==> most day of week = {day_of_week}:==> most hour of day = {hour_of_day}")
 
 def station_stats(df):
 
     if df.empty:
         return False
     
-    start_station = df['Start Station'].value_counts().idxmax()
-    end_station = df['End Station'].value_counts().idxmax()
+    start_station = df['Start Station'].mode()[0]
+    end_station = df['End Station'].mode()[0]
 
     df['trip'] = df['Start Station'] + ' TO ' + df['End Station']
 
-    trip_counts = df['trip'].value_counts().idxmax()
+    trip_counts = df['trip'].mode()[0]
     
     print(f"Most start station = {start_station}:==> most end station = {end_station}:==> most trip = {trip_counts} ")
 
@@ -139,10 +128,10 @@ def trip_duration_stats(df):
     df['duration'] = end_time - start_time
 
     #caculation total travel time
-    total_duration = df.groupby(['Start Time','End Time'])['duration'].sum()
+    total_duration = df['duration'].sum()
 
     #caculation mean travel time
-    avg_duration = df.groupby(['Start Time','End Time'])['duration'].mean()
+    avg_duration = df['duration'].mean()
 
     print(f"total_duration = {total_duration}:==> avg_duration = {avg_duration}" )
 
@@ -180,8 +169,17 @@ def user_stats(df, city = None):
 
     print(f"counts of each user type = {counts_user_type})")
 
-def main():
+# Function to display records in batches
+def display_next_batch(df, start, batch_size):
+    end_index = min(start + batch_size, len(df))
+    if start >= len(df):
+        print("No more rows to display.")
+        return start
     
+    print(df.iloc[start:end_index])
+    return end_index
+
+def main():
     while True:
         city, month, day = get_filters()
         df = load_data(city, month, day)
@@ -189,13 +187,22 @@ def main():
         if df.empty:
             print('No data matches the input condition')
         else:
-            print(df)
+            # Initialize index for slicing the DataFrame
+            start_index = 0
+            batch_size = 5
+            while start_index < len(df):
+                user_input = input("Do you go to access more data (YES/NO)?")
+                if user_input.strip().upper() == 'YES':
+                    start_index = display_next_batch(df, start_index, batch_size)
+                else:
+                    break
+
             time_stats(df)
             station_stats(df)
             trip_duration_stats(df)
             user_stats(df, city)
 
-        restart = input('\nWould you like to restart? Enter yes or no.\n')
+            restart = input('\nWould you like to restart? Enter yes or no.\n')
         if restart.lower() != 'yes':
             break
 
